@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
+import { TrashIcon } from "@heroicons/react/24/outline";
 
 const TodoForm = () => {
   const [selectedBtn, setSelectedBtn] = useState("All");
@@ -42,37 +43,69 @@ const TodoForm = () => {
       });
   };
 
-  useEffect(
-    () => {
+  useEffect(() => {
+    axios
+      .get("http://localhost:3000/api/tasks", { headers: headers })
+      .then((response) => {
+        console.log(response.data);
+        setTodoData(response.data);
+        setUpdateData(false);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }, [updateData]);
+
+  const toggleTaskCompletion = (id) => {
+    setTodoData((prevTodoData) => {
+      const updatedTodoData = prevTodoData.map((task) =>
+        task._id === id ? { ...task, completed: !task.completed } : task
+      );
+
+      const updatedTask = updatedTodoData.find((task) => task._id === id);
+
       axios
-        .get("http://localhost:3000/api/tasks", { headers: headers })
+        .put(`http://localhost:3000/api/tasks/${id}`, updatedTask, {
+          headers: headers,
+        })
         .then((response) => {
-          console.log(response.data);
-          setTodoData(response.data);
+          setUpdateData(true);
         })
         .catch((error) => {
           console.log(error);
         });
-    },
-    [updateData],
-    []
-  );
 
-  const toggleTaskCompletion = (id) => {
-    setTodoData(
-      todoData.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
-
-    let updated_task = todoData.find((task) => task.id === id);
-    //put method
+      return updatedTodoData;
+    });
+  };
+  //Delete single task
+  const deleteTask = (id) => {
+    // const delete_task = todoData.find((task) => task._id === _id);
+    //delete method
     axios
-      .put(`http://localhost:3000/api/tasks/${id}`, updated_task, {
+      .delete(`http://localhost:3000/api/tasks/${id}`, {
         headers: headers,
       })
       .then((response) => {
         console.log(response.data);
+        setTodoData(todoData.filter((task) => task._id != id));
+        setUpdateData(true);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  };
+
+  //delete all tasks
+  const handleDeleteAllTasks = () => {
+    axios
+      .delete("http://localhost:3000/api/tasks", {
+        headers: headers,
+      })
+      .then((response) => {
+        console.log(response.data);
+        setTodoData([]);
+        setUpdateData(true);
       })
       .catch((error) => {
         console.log(error);
@@ -127,21 +160,79 @@ const TodoForm = () => {
           ADD
         </button>
       </div>
-      {todoData.map((task) => (
-        <li key={task.id} className="flex items-center mb-4 ml-[30rem]">
-          <input
-            type="checkbox"
-            checked={task.completed}
-            onChange={() => toggleTaskCompletion(task._id)}
-            className="mr-3 h-6 w-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-          />
-          <span
-            className={`${task.completed ? "line-through text-gray-500" : ""}`}
+      {selectedBtn === "All" &&
+        todoData.map((task) => (
+          <li key={task._id} className="flex items-center mb-4 ml-[30rem]">
+            <input
+              type="checkbox"
+              checked={task.completed}
+              onChange={() => toggleTaskCompletion(task._id)}
+              className="mr-3 h-6 w-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span
+              className={`${
+                task.completed ? "line-through text-gray-500" : ""
+              }`}
+            >
+              {task.title}
+            </span>
+          </li>
+        ))}
+      {selectedBtn === "Active" &&
+        todoData
+          .filter((task) => !task.completed)
+          .map((task) => (
+            <li key={task.id} className="flex items-center mb-4 ml-[30rem]">
+              <input
+                type="checkbox"
+                checked={task.completed}
+                onChange={() => toggleTaskCompletion(task._id)}
+                className="mr-3 h-6 w-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span
+                className={`${
+                  task.completed ? "line-through text-gray-500" : ""
+                }`}
+              >
+                {task.title}
+              </span>
+            </li>
+          ))}
+      {selectedBtn === "Completed" &&
+        todoData
+          .filter((task) => task.completed)
+          .map((task) => (
+            <li key={task._id} className="flex items-center mb-4 ml-[30rem]">
+              <input
+                type="checkbox"
+                checked={task.completed}
+                onChange={() => toggleTaskCompletion(task._id)}
+                className="mr-3 h-6 w-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span
+                className={`${
+                  task.completed ? "line-through text-gray-500" : ""
+                }`}
+              >
+                {task.title}
+              </span>
+              <TrashIcon
+                onClick={() => deleteTask(task._id)}
+                className="h-5 w-5 text-red-500 cursor-pointer hover:text-red-700 ml-10"
+              />
+            </li>
+          ))}
+      {selectedBtn === "Completed" && todoData.length != 0 && (
+        <div>
+          <button
+            className="flex items-center w-32 bg-red-500 text-white h-14 border-2 rounded-md p-2 ml-[55rem]"
+            onClick={handleDeleteAllTasks}
           >
-            {task.title}
-          </span>
-        </li>
-      ))}
+            <TrashIcon className="h-5 w-5 mr-2" />
+            delete all
+          </button>
+        </div>
+      )}
     </>
   );
 };
